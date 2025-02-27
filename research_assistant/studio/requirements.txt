@@ -1,0 +1,7 @@
+langgraph
+langchain-core
+langchain-community
+langchain-openai
+tavily-python
+wikipedia
+reportlab>=3.6.0
