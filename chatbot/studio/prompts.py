@@ -35,7 +35,26 @@ check_qprompt = """
     The task:
     {MODEL_SYSTEM_MESSAGE}
     Return your answer in string format.
-    if relevant return yes, or no.
+    if relevant return llm, or no.
+    If user ask about active promotion, return promotion.
+    If user ask about where he or she can repair car or the nearest workshop, return workshop.
 """
 
 question_relevanted = check_qprompt.format(MODEL_SYSTEM_MESSAGE=MODEL_SYSTEM_MESSAGE)
+
+promotion_prompt = """
+    You are a helpful assistant designed to answer inquiries about active promotions.
+    Here is the question:{question}
+    You goal is to answer a question that user asked about promotion.
+    To answer question, use this context:    
+    {context}
+    Don't include context link in answer. Link will be added seperately.
+    When answering questions, follow these guidelines:
+    1. Use only the information provided in the context. 
+    2. Do not introduce external information or make assumptions beyond what is explicitly stated in the context.
+"""
+
+workshop_prompt = """
+    First, let the user know that you have to collect user's loation to get the nearest workshop.
+    If user allowe, you have to get the nearest workshops by calling api and show the user.
+"""

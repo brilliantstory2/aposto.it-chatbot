@@ -1,34 +1,44 @@
 "use client";
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import type { Message } from "@langchain/langgraph-sdk";
 import { Client } from "@langchain/langgraph-sdk";
-import "./App.css"
+import "./App.css";
+
+// 1) Define a wrapper type that includes `additional_kwargs`
+type ExtendedMessage = Message & {
+  additional_kwargs?: {
+    geolocation?: any;
+    is_link?: boolean;
+  };
+};
 
 const App: React.FC = () => {
   const apiUrl = import.meta.env.VITE_DEPLOYMENT_URL;
-  const apiKey = import.meta.env.VITE_LANGSMITH_API_KEY
-  const [isOpen, setIsOpen] = useState<boolean>(false)
-  const bottomMarkerRef = useRef<HTMLDivElement>(null)
-  const messageContainer = useRef<HTMLDivElement>(null)
-  
+  const apiKey = import.meta.env.VITE_LANGSMITH_API_KEY;
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const bottomMarkerRef = useRef<HTMLDivElement>(null);
+  const messageContainer = useRef<HTMLDivElement>(null);
+
   const initializeThread = async () => {
-    if(!localStorage.getItem('chatbot-thread-id')) {
+    if (!localStorage.getItem("chatbot-thread-id")) {
       const client = new Client({ apiUrl: apiUrl, apiKey: apiKey });
-      const new_thread = await client.threads.create()
-      localStorage.setItem("chatbot-thread-id", new_thread["thread_id"])
+      const new_thread = await client.threads.create();
+      localStorage.setItem("chatbot-thread-id", new_thread["thread_id"]);
     }
-  }
+  };
 
   useEffect(() => {
     initializeThread();
   }, []);
 
-  const thread = useStream<{ messages: Message[] }>({
+  // 2) Use `ExtendedMessage` in the `useStream` hook:
+  const thread = useStream<{ messages: ExtendedMessage[] }>({
     apiUrl: apiUrl,
+    apiKey: apiKey,
     assistantId: "chatbot",
     messagesKey: "messages",
-    threadId: localStorage.getItem('chatbot-thread-id')
+    threadId: localStorage.getItem("chatbot-thread-id"),
   });
 
   const toggleChatbox = () => {
@@ -42,17 +52,45 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
+    if (thread.messages.length > 0) {
+      console.log(thread.messages);
+    }
+
+    // 3) Safely check `additional_kwargs` with a type assertion:
+    if (
+      thread.messages.length > 0 &&
+      (thread.messages[thread.messages.length - 1] as ExtendedMessage).additional_kwargs?.geolocation
+    ) {
+      navigator.geolocation.getCurrentPosition(
+        function (position) {
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+          console.log("Latitude: " + latitude);
+          console.log("Longitude: " + longitude);
+        },
+        function (error) {
+          console.error("Error getting location: " + error.message);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0,
+        }
+      );
+    }
     scrollToBottom();
   }, [isOpen, thread.messages]);
 
   const submitMessage = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const form = e.target as HTMLFormElement
-    const formData = new FormData(form)
-    const message = formData.get("message") as string
-    form.reset()
-    thread.submit({ messages: [{ type: "human", content: message }] })
-  }
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+    const message = formData.get("message") as string;
+    form.reset();
+    thread.submit({
+      messages: [{ type: "human", content: message }],
+    });
+  };
 
   return (
     <div className="fixed bottom-4 right-4">
@@ -68,24 +106,26 @@ const App: React.FC = () => {
             {thread.messages.map((message, index) => (
               <div
                 key={index}
-                className={`flex items-start ${
-                  message.type === 'human' ? 'justify-end' : ''
-                }`}
+                className={`flex items-start ${message.type === "human" ? "justify-end" : ""}`}
               >
-
-                {message.type === 'ai' && !message.additional_kwargs?.is_link && (
+                {/* 4) Use type assertion to safely check `additional_kwargs?.is_link` */}
+                {message.type === "ai" && !(message as ExtendedMessage).additional_kwargs?.is_link && (
                   <div className="bg-gray-200 text-gray-900 p-2 rounded-lg max-w-xs">
                     <p>{message.content as unknown as React.ReactNode}</p>
                   </div>
                 )}
 
-                {
-                  message.type === 'ai' && message.additional_kwargs?.is_link===true && (
-                    <a target='_blank' href={message.content as string} className='text-blue-500 hover:underline'>{message.content as unknown as React.ReactNode}</a>
-                  )
-                }
+                {message.type === "ai" && (message as ExtendedMessage).additional_kwargs?.is_link && (
+                  <a
+                    target="_blank"
+                    href={message.content as string}
+                    className="text-blue-500 hover:underline"
+                  >
+                    {message.content as unknown as React.ReactNode}
+                  </a>
+                )}
 
-                {message.type === 'human' && (
+                {message.type === "human" && (
                   <div className="bg-blue-500 text-white p-2 rounded-lg max-w-xs">
                     <p>{message.content as unknown as React.ReactNode}</p>
                   </div>
@@ -94,10 +134,9 @@ const App: React.FC = () => {
             ))}
             <div ref={bottomMarkerRef} />
           </div>
-          <form 
-            className="border-t p-4 flex relative"
-            onSubmit={submitMessage}
-          >
+
+          {/* Chat Input */}
+          <form className="border-t p-4 flex relative" onSubmit={submitMessage}>
             {thread.isLoading && (
               <div className="absolute -top-10">
                 <div className="text-gray-900 p-2 rounded-lg max-w-xs">
@@ -105,13 +144,14 @@ const App: React.FC = () => {
                 </div>
               </div>
             )}
-            <input
-              type="text"
+            <textarea
               placeholder="Type your message..."
               name="message"
-              autoComplete='off'
-              className="flex-grow p-2 border border-gray-300 rounded-l-lg focus:outline-none"
+              rows={3}
+              autoComplete="off"
+              className="flex-grow p-2 border border-gray-300 rounded-l-lg focus:outline-none resize-y"
             />
+
             <button
               type="submit"
               className="bg-blue-500 text-white px-4 rounded-r-lg hover:bg-blue-600 transition"
@@ -134,8 +174,8 @@ const App: React.FC = () => {
         onClick={toggleChatbox}
         className="bg-blue-500 text-white px-4 py-2 mt-2 rounded-full shadow-lg hover:bg-blue-600 transition float-right"
       >
-        {
-          isOpen && <svg
+        {isOpen && (
+          <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-6 w-6"
             fill="none"
@@ -144,9 +184,9 @@ const App: React.FC = () => {
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
-        }
-        {
-          !isOpen && <svg
+        )}
+        {!isOpen && (
+          <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-6 w-6"
             fill="none"
@@ -160,7 +200,7 @@ const App: React.FC = () => {
               d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.97-4.03 9-9 9a9.92 9.92 0 01-4-.93L3 21l1.93-4.07A8.959 8.959 0 013 12c0-4.97 4.03-9 9-9s9 4.03 9 9z"
             />
           </svg>
-        }
+        )}
       </button>
     </div>
   );

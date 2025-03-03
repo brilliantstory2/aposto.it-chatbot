@@ -10,3 +10,17 @@ Goto studio folder and open terminal
 run the following command.
 
 langgraph dev --host localhost --port 8000
+
+## Run white UI.
+Goto chat_ui folder and open a new terminal 
+run the following command.
+npm install
+and then this one
+npm run dev
+
+go to
+localhost:5173
+
+## TO BUILD PRODUCTION DIST.
+npm run build
+(sometimes must run before: npm install --save-dev typescript)

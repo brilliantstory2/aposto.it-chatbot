@@ -7,4 +7,5 @@ langchain-core
 langchain-text-splitters
 typing-extensions
 langgraph
-selenium
+beautifulsoup4
+ultimate-sitemap-parser
