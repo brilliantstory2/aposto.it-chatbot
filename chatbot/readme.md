@@ -24,3 +24,9 @@ localhost:5173
 ## TO BUILD PRODUCTION DIST.
 npm run build
 (sometimes must run before: npm install --save-dev typescript)
+
+## API TO SEARCH FOR NEAREST WORKSHOP.
+https://api.aposto.dev.more.it/api/doc
+
+The API call for searching workshops is /api/shops/search.
+The documentation is available at api.aposto.dev.more.it, but development calls must be made to api.dev.aposto.it.

@@ -10,6 +10,8 @@ type ExtendedMessage = Message & {
   additional_kwargs?: {
     geolocation?: any;
     is_link?: boolean;
+    display: boolean;
+    complete?: boolean;
   };
 };
 
@@ -52,10 +54,10 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    if (thread.messages.length > 0) {
-      console.log(thread.messages);
-    }
+    scrollToBottom();
+  }, [isOpen, thread.messages]);
 
+  useEffect(() => {
     // 3) Safely check `additional_kwargs` with a type assertion:
     if (
       thread.messages.length > 0 &&
@@ -65,21 +67,18 @@ const App: React.FC = () => {
         function (position) {
           const latitude = position.coords.latitude;
           const longitude = position.coords.longitude;
-          console.log("Latitude: " + latitude);
-          console.log("Longitude: " + longitude);
+          if(!thread.isLoading) {
+            thread.submit({
+              messages: [{ type: "human", content: "Latitude: "+latitude+",Longitude: "+longitude, additional_kwargs: {display:false} }],
+            });
+          }
         },
         function (error) {
           console.error("Error getting location: " + error.message);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 0,
         }
       );
     }
-    scrollToBottom();
-  }, [isOpen, thread.messages]);
+  }, [thread.messages])
 
   const submitMessage = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -95,43 +94,50 @@ const App: React.FC = () => {
   return (
     <div className="fixed bottom-4 right-4">
       {isOpen && (
-        <div className="mt-4 w-100 bg-white rounded-lg shadow-lg flex flex-col overflow-hidden transition-opacity duration-100 opacity-100">
+        <div className="mt-4 w-120 bg-white rounded-lg shadow-lg flex flex-col overflow-hidden transition-opacity duration-100 opacity-100">
           {/* Chat Header */}
           <div className="bg-blue-500 p-4">
             <h2 className="text-white text-lg font-semibold">Aposto Chatbot</h2>
           </div>
 
           {/* Chat Messages Area */}
-          <div className="p-4 h-100 overflow-y-auto space-y-4" ref={messageContainer}>
-            {thread.messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex items-start ${message.type === "human" ? "justify-end" : ""}`}
-              >
-                {/* 4) Use type assertion to safely check `additional_kwargs?.is_link` */}
-                {message.type === "ai" && !(message as ExtendedMessage).additional_kwargs?.is_link && (
-                  <div className="bg-gray-200 text-gray-900 p-2 rounded-lg max-w-xs">
-                    <p>{message.content as unknown as React.ReactNode}</p>
-                  </div>
-                )}
-
-                {message.type === "ai" && (message as ExtendedMessage).additional_kwargs?.is_link && (
-                  <a
-                    target="_blank"
-                    href={message.content as string}
-                    className="text-blue-500 hover:underline"
-                  >
-                    {message.content as unknown as React.ReactNode}
-                  </a>
-                )}
-
-                {message.type === "human" && (
-                  <div className="bg-blue-500 text-white p-2 rounded-lg max-w-xs">
-                    <p>{message.content as unknown as React.ReactNode}</p>
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="p-4 h-120 overflow-y-auto space-y-4" ref={messageContainer}>
+            {thread.messages.map((message, index) => {
+              return (
+                <div
+                  key={index}
+                  className={`flex items-start ${message.type === "human" ? "justify-end" : ""}`}
+                >
+                  {
+                  message.type === "ai" && 
+                  !(message as ExtendedMessage).additional_kwargs?.is_link && 
+                  (message as ExtendedMessage).additional_kwargs?.complete==true && (
+                    <div className="bg-gray-200 text-gray-900 p-2 rounded-lg max-w-100">
+                      <p dangerouslySetInnerHTML={{__html: message.content as unknown as string}}></p>
+                    </div>
+                  )}
+  
+                  {
+                  message.type === "ai" && 
+                  (message as ExtendedMessage).additional_kwargs?.is_link &&
+                  (message as ExtendedMessage).additional_kwargs?.complete==true && (
+                    <a
+                      target="_blank"
+                      href={message.content as string}
+                      className="text-blue-500 hover:underline"
+                    >
+                      {message.content as unknown as React.ReactNode}
+                    </a>
+                  )}
+  
+                  {message.type === "human" && (message as ExtendedMessage).additional_kwargs?.display!=false && (
+                    <div className="bg-blue-500 text-white p-2 rounded-lg max-w-100">
+                      <p>{message.content as unknown as React.ReactNode}</p>
+                    </div>
+                  )}
+                </div>
+              )
+            } )}
             <div ref={bottomMarkerRef} />
           </div>
 

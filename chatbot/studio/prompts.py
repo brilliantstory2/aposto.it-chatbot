@@ -37,24 +37,46 @@ check_qprompt = """
     Return your answer in string format.
     if relevant return llm, or no.
     If user ask about active promotion, return promotion.
-    If user ask about where he or she can repair car or the nearest workshop, return workshop.
+    If user ask about where he or she can repair car or the nearest workshop or user provide latitude and longitude, return workshop.
 """
-
-question_relevanted = check_qprompt.format(MODEL_SYSTEM_MESSAGE=MODEL_SYSTEM_MESSAGE)
 
 promotion_prompt = """
     You are a helpful assistant designed to answer inquiries about active promotions.
     Here is the question:{question}
-    You goal is to answer a question that user asked about promotion.
-    To answer question, use this context:    
-    {context}
-    Don't include context link in answer. Link will be added seperately.
+    You should craft your answer following these instructions:
+    1) check your  RAG knowledge for aposto.it links regarding active promotions
+    2) if a promotion is at the moment active, make a summary of it and output to the the user
+    To answer question, use these documents:
+    {documents}
+    Don't include document link in answer. Link will be added seperately.
     When answering questions, follow these guidelines:
-    1. Use only the information provided in the context. 
-    2. Do not introduce external information or make assumptions beyond what is explicitly stated in the context.
+    1. Use only the information provided in the documents. 
+    2. Do not introduce external information or make assumptions beyond what is explicitly stated in the documents.
 """
 
 workshop_prompt = """
-    First, let the user know that you have to collect user's loation to get the nearest workshop.
-    If user allowe, you have to get the nearest workshops by calling api and show the user.
+    First of all, you have to check from messages whether user already provided his latitude and longitude or not.
+    This is messages:
+    {messages}
+    If user already provided, return string format value "get_workshops".
+    If user already provided, return string format value "ask_permission".
+"""
+
+permission_prompt = """
+    You have to let the user know that he has to provide his location so that you can search the nearest workshops.
+"""
+
+location_prompt = """
+    You are a skillful assistant that retrieve latitude and longitude from message history.
+    This is the message history:
+    {messages}
+"""
+
+display_workshops = """
+    You have to return workshops data. If the data is not empty, let the user the available workshops.
+    Don't format workshops data. return raw data.
+    The data is:
+    {workshops}
+    But if the data is empty let the user there are not available workshops around the user.
+    Be polite.
 """
