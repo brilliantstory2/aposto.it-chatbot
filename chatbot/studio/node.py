@@ -88,27 +88,14 @@ def get_workshops(state: State, llm):
         response = requests.get(get_workshop_api, params=params)
         if response.status_code == 200:
             data = response.json()
-            for item in data.get("items", []):
-                workshop_details = (
-                    f'<p>{item["companyName"]}</p>'
-                    f'<p>{item["address"]}</p>'
-                    f'<p>{item["city"]} ({item["district"]})</p>'
-                    f'<p>Distanza: {item["distance"]} km</p>'
-                    f'<p>Telefono: {item["phone1"]}</p>'
-                    '\n----------'
-                )
-                workshops.append(workshop_details)
-
-            # Check if there are more pages to fetch
+            workshops += data.get("items", [])
             if params["page"] >= data.get("totalPages", 1):
                 break
             params["page"] += 1
         else:
             return {"messages": [AIMessage(content="API call failed")]}
 
-    formatted_prompt = display_workshops.format(workshops="\n".join(workshops))
-    response = llm.invoke([SystemMessage(content=formatted_prompt)])
-
+    formatted_prompt = display_workshops.format(workshops=workshops)
+    response = llm.invoke([SystemMessage(content=formatted_prompt)]+state["messages"])
 
     return {"messages": [AIMessage(content=response.content,additional_kwargs={"complete": True})]}
-    # return {"messages": [AIMessage(content=location.latitude+" sldfjlsdfj "+location.longitude)]}

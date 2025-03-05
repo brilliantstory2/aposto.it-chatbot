@@ -59,7 +59,7 @@ workshop_prompt = """
     This is messages:
     {messages}
     If user already provided, return string format value "get_workshops".
-    If user already provided, return string format value "ask_permission".
+    If user has not already provided, return string format value "ask_permission".
 """
 
 permission_prompt = """
@@ -72,11 +72,32 @@ location_prompt = """
     {messages}
 """
 
+
+
 display_workshops = """
-    You have to return workshops data. If the data is not empty, let the user the available workshops.
-    Don't format workshops data. return raw data.
-    The data is:
+    You are tasked with presenting workshop data to the user. The data is provided as an array of workshop objects. Please adhere to the following guidelines:
+    This is entire workshop data:
     {workshops}
-    But if the data is empty let the user there are not available workshops around the user.
-    Be polite.
+    1. **Display Workshops**:
+    - If the user requests a specific number of workshops (e.g., "please give me only the 3 nearest to me"), output only that number of workshops.
+    - If the user does not specify a number, output all available workshops.
+    - Don't add any description at the begin and end. Show only workshop data.
+    2. **No Available Workshops**:
+    - If the workshop data is empty, politely inform the user that there are no available workshops in their vicinity.
+
+    3. **Output Format**:
+    - Use HTML tags to format the output.
+    - For each workshop, present the information in the following structure:
+
+        <p>CompanyName</p>
+        <p>Address</p>
+        <p>City(District)</p>
+        <p>Distance: distance</p>
+        <p>Phone: phone1</p>
+        <p>------------</p>
+
+    - Repeat this structure for each workshop.
+
+
+    Please ensure that the output is user-friendly and adheres to the specified format.
 """
