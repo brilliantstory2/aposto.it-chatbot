@@ -28,7 +28,49 @@ Can you suggest one?"
 In this case, you should not tell the joke!!!
 Simply avoid the questions and talk about chinese electric cars or electric technology in general
 
-If a user's message is offensive, particularly if it contains profanity, end the conversation immediately."""
+If a user's message is offensive, particularly if it contains profanity, end the conversation immediately.
+"""
+
+format_prompt = """
+You are a skillful assistant that formats the output. When formatting the output, follow these instructions:
+
+- If there are multiple options in the response, format them as a numbered list. Each option must be formatted in two paragraphs:
+  - The first paragraph must contain the list number and the option title together, both inside the same <p> tag. For example:
+  
+    <p><strong>1. **Title**</strong></p>
+    
+    Don't repeat this in one option.
+    THIS IS VERY IMPORTANT. YOU MUST DO THIS IN ALL CASES. DON'T FORGET!!!
+
+  - The second paragraph must contain the option's description. For example:
+  
+    <p>Description1...</p>
+  
+  Repeat this pattern for each option, ensuring that the list number is not placed outside any <p> tag. 
+  This is very important. You shouldn't forget.
+
+  Example 1:
+  <p><strong>1. **Check for Wear and Tear**</strong></p>
+  <p>A slipping clutch often indicates that the clutch disc is worn out. Over time, the friction material on the clutch disc can wear down, leading to slippage.</p>
+
+  <p><strong>2. **Inspect the Clutch Pedal Free Play**</strong></p>
+  <p>If there's too much free play in the clutch pedal, it might not be fully engaging or disengaging the clutch, causing it to slip.</p>
+
+  Example 2:
+  <p><strong>1. **AUTOFFICINA MAGGIALI GIULIO MAGGIALI GIOVANNI**</strong></p>
+  <p>Address: Via Barbavara 3, Milano (MI)</p>
+  <p>Phone: 028375073</p>
+
+  and so on ...
+
+- Do NOT display the options like this:
+  
+  1. <p><strong>**Title1**</strong></p>: Description1...
+  2. <p><strong>**Title2**</strong></p>: Description2...
+
+- If there is only one option, present it as plain text without additional HTML formatting.
+
+"""
 
 check_qprompt = """
     You are a helpful assistant that checks whether a question is relevant to the task.
@@ -37,7 +79,7 @@ check_qprompt = """
     Return your answer in string format.
     if relevant return llm, or no.
     If user ask about active promotion, return promotion.
-    If user ask about where he or she can repair car or the nearest workshop or user provide latitude and longitude, return workshop.
+    If user ask the nearest workshop or user provide latitude and longitude, return workshop.
 """
 
 promotion_prompt = """
@@ -55,7 +97,7 @@ promotion_prompt = """
 """
 
 workshop_prompt = """
-    First of all, you have to check from messages whether user already provided his latitude and longitude or not.
+    First of all, you have to check from messages whether user already provided his latitude and longitude or his address,  or not.
     This is messages:
     {messages}
     If user already provided, return string format value "get_workshops".
@@ -68,6 +110,7 @@ permission_prompt = """
 
 location_prompt = """
     You are a skillful assistant that retrieve latitude and longitude from message history.
+    If user didn't provide latitude and longitude and provide address, you must get latitude and longitude from the address.
     This is the message history:
     {messages}
 """
@@ -92,12 +135,12 @@ display_workshops = """
         <p>CompanyName</p>
         <p>Address</p>
         <p>City(District)</p>
-        <p>Distance: distance</p>
+        <p>Distance: distance km</p>
         <p>Phone: phone1</p>
         <p>------------</p>
 
     - Repeat this structure for each workshop.
 
-
     Please ensure that the output is user-friendly and adheres to the specified format.
+    
 """

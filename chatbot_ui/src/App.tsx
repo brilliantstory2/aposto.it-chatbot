@@ -19,14 +19,22 @@ const App: React.FC = () => {
   const apiUrl = import.meta.env.VITE_DEPLOYMENT_URL;
   const apiKey = import.meta.env.VITE_LANGSMITH_API_KEY;
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isExpanded, setExpanded] = useState<boolean>(false)
+  const [message, setMessage] = useState<string>("")
   const bottomMarkerRef = useRef<HTMLDivElement>(null);
   const messageContainer = useRef<HTMLDivElement>(null);
+  // const [threads, setThreads] = useState<string[]>([]);
+  const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
 
   const initializeThread = async () => {
-    if (!localStorage.getItem("chatbot-thread-id")) {
+    if (!localStorage.getItem("current-thread-id")) {
       const client = new Client({ apiUrl: apiUrl, apiKey: apiKey });
       const new_thread = await client.threads.create();
-      localStorage.setItem("chatbot-thread-id", new_thread["thread_id"]);
+      localStorage.setItem("current-thread-id", new_thread["thread_id"]);
+      localStorage.setItem("thread-ids", new_thread["thread_id"]);
+      setCurrentThreadId(new_thread["thread_id"])
+    } else {
+      setCurrentThreadId(localStorage.getItem("current-thread-id"))
     }
   };
 
@@ -40,12 +48,24 @@ const App: React.FC = () => {
     apiKey: apiKey,
     assistantId: "chatbot",
     messagesKey: "messages",
-    threadId: localStorage.getItem("chatbot-thread-id"),
+    threadId: currentThreadId,
   });
 
   const toggleChatbox = () => {
     setIsOpen((prev) => !prev);
   };
+  const toggleSize = () => {
+    setExpanded((prev) => !prev)
+  }
+
+  const createNewThread = async () => {
+    if(thread.isLoading) return;
+    const client = new Client({ apiUrl: apiUrl, apiKey: apiKey });
+    const new_thread = await client.threads.create();
+    localStorage.setItem("current-thread-id", new_thread["thread_id"]);
+    setCurrentThreadId(new_thread["thread_id"])
+    localStorage.setItem("thread-ids", new_thread["thread_id"]+","+localStorage.getItem("thread-ids"));
+  }
 
   const scrollToBottom = () => {
     if (messageContainer.current) {
@@ -55,7 +75,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [isOpen, thread.messages]);
+  }, [isOpen, thread.messages, isExpanded]);
 
   useEffect(() => {
     // 3) Safely check `additional_kwargs` with a type assertion:
@@ -86,22 +106,92 @@ const App: React.FC = () => {
     const formData = new FormData(form);
     const message = formData.get("message") as string;
     form.reset();
-    thread.submit({
-      messages: [{ type: "human", content: message }],
-    });
+    if(!thread.isLoading && message) {
+      thread.submit({
+        messages: [{ type: "human", content: message }],
+      });
+      setMessage("")
+    }
+  };
+
+  const changeThread = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setCurrentThreadId(e.target.value)
+    localStorage.setItem("current-thread-id", e.target.value)
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && event.ctrlKey) {
+      event.preventDefault();
+      thread.submit({
+        messages: [{ type: "human", content: message }],
+      })
+      setMessage("")
+    }
   };
 
   return (
     <div className="fixed bottom-4 right-4">
       {isOpen && (
-        <div className="mt-4 w-120 bg-white rounded-lg shadow-lg flex flex-col overflow-hidden transition-opacity duration-100 opacity-100">
+        <div className={`mt-4 ${isExpanded ? "md:w-240" : "md:w-120"}  w-95 bg-white rounded-lg shadow-lg flex flex-col overflow-hidden transition-opacity duration-100 opacity-100`}>
           {/* Chat Header */}
-          <div className="bg-blue-500 p-4">
+          <div className="bg-blue-500 p-4 flex justify-between items-center">
             <h2 className="text-white text-lg font-semibold">Aposto Chatbot</h2>
+            <div className="flex items-center">
+              <select onChange={changeThread} className={`text-white ${isExpanded ? "w-auto": "w-40"} max-md:w-30`}>
+                {
+                  localStorage.getItem("thread-ids")?.split(',').map((id) => {
+                    return <option value={id} key={id}>{id}</option>
+                  })
+                }
+              </select>
+              <button
+                onClick={createNewThread}
+                className="bg-transparent text-white p-2 rounded-lg pointer transition cursor-pointer hover:bg-blue-600"
+              >
+                <svg
+                  fill="#ffffff"
+                  version="1.1"
+                  xmlns="http://www.w3.org/2000/svg"
+                  xmlnsXlink="http://www.w3.org/1999/xlink"
+                  width="16px"
+                  height="16px"
+                  viewBox="0 0 45.402 45.402"
+                  xmlSpace="preserve"
+                  transform="matrix(1, 0, 0, 1, 0, 0)"
+                >
+                  <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
+                  <g
+                    id="SVGRepo_tracerCarrier"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  ></g>
+                  <g id="SVGRepo_iconCarrier">
+                    <g>
+                      <path d="M41.267,18.557H26.832V4.134C26.832,1.851,24.99,0,22.707,0c-2.283,0-4.124,1.851-4.124,4.135v14.432H4.141 c-2.283,0-4.139,1.851-4.138,4.135c-0.001,1.141,0.46,2.187,1.207,2.934c0.748,0.749,1.78,1.222,2.92,1.222h14.453V41.27 c0,1.142,0.453,2.176,1.201,2.922c0.748,0.748,1.777,1.211,2.919,1.211c2.282,0,4.129-1.851,4.129-4.133V26.857h14.435 c2.283,0,4.134-1.867,4.133-4.15C45.399,20.425,43.548,18.557,41.267,18.557z" />
+                    </g>
+                  </g>
+                </svg>
+              </button>
+              <button
+                onClick={toggleSize}
+                className="bg-transparent text-white p-2 rounded-lg pointer transition cursor-pointer hover:bg-blue-600 max-md:hidden"
+              >
+                {
+                  isExpanded && (
+                    <svg width="16px" height="16px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff"><g id="SVGRepo_bgCarrier" strokeWidth="0"></g><g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M14 10L21 3M14 10H20M14 10V4M3 21L10 14M10 14V20M10 14H4" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path> </g></svg>
+                  )
+                }
+                {
+                  !isExpanded && (
+                    <svg width="16px" height="16px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" strokeWidth="0"></g><g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M14.5 9.5L21 3M21 3H15M21 3V9M3 21L9.5 14.5M3 21V15M3 21H9" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path> </g></svg>
+                  )
+                }
+              </button>
+            </div>
           </div>
 
           {/* Chat Messages Area */}
-          <div className="p-4 h-120 overflow-y-auto space-y-4" ref={messageContainer}>
+          <div className={`p-4 ${isExpanded ? "md:h-130" : "md:h-120"} h-95 overflow-y-auto space-y-4`} ref={messageContainer}>
             {thread.messages.map((message, index) => {
               return (
                 <div
@@ -110,17 +200,15 @@ const App: React.FC = () => {
                 >
                   {
                   message.type === "ai" && 
-                  !(message as ExtendedMessage).additional_kwargs?.is_link && 
-                  (message as ExtendedMessage).additional_kwargs?.complete==true && (
-                    <div className="bg-gray-200 text-gray-900 p-2 rounded-lg max-w-100">
+                  !(message as ExtendedMessage).additional_kwargs?.is_link &&   (
+                    <div className={`bg-gray-200 text-gray-900 p-2 rounded-lg ${isExpanded ? "max-w-220":"max-w-100"}`}>
                       <p dangerouslySetInnerHTML={{__html: message.content as unknown as string}}></p>
                     </div>
                   )}
   
                   {
                   message.type === "ai" && 
-                  (message as ExtendedMessage).additional_kwargs?.is_link &&
-                  (message as ExtendedMessage).additional_kwargs?.complete==true && (
+                  (message as ExtendedMessage).additional_kwargs?.is_link && (
                     <a
                       target="_blank"
                       href={message.content as string}
@@ -131,7 +219,7 @@ const App: React.FC = () => {
                   )}
   
                   {message.type === "human" && (message as ExtendedMessage).additional_kwargs?.display!=false && (
-                    <div className="bg-blue-500 text-white p-2 rounded-lg max-w-100">
+                    <div className={`bg-blue-500 text-white p-2 rounded-lg ${isExpanded ? "max-w-220":"max-w-100"}`}>
                       <p>{message.content as unknown as React.ReactNode}</p>
                     </div>
                   )}
@@ -146,20 +234,25 @@ const App: React.FC = () => {
             {thread.isLoading && (
               <div className="absolute -top-10">
                 <div className="text-gray-900 p-2 rounded-lg max-w-xs">
-                  <p>typing...</p>
+                  <p>digitando...</p>
                 </div>
               </div>
             )}
             <textarea
-              placeholder="Type your message..."
+              placeholder="Digita il tuo messaggio..."
               name="message"
               rows={3}
               autoComplete="off"
+              value={message}
               className="flex-grow p-2 border border-gray-300 rounded-l-lg focus:outline-none resize-y"
+              disabled={thread.isLoading}
+              onKeyDown={handleKeyDown}
+              onChange={(e) => setMessage(e.target.value)}
             />
 
             <button
               type="submit"
+              disabled={thread.isLoading}
               className="bg-blue-500 text-white px-4 rounded-r-lg hover:bg-blue-600 transition"
             >
               <svg

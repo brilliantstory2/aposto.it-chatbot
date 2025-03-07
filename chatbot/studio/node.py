@@ -3,7 +3,7 @@ load_dotenv()
 import os
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_community.tools.tavily_search import TavilySearchResults
-from prompts import MODEL_SYSTEM_MESSAGE, check_qprompt, promotion_prompt, workshop_prompt, permission_prompt, location_prompt, display_workshops
+from prompts import MODEL_SYSTEM_MESSAGE, format_prompt, check_qprompt, promotion_prompt, workshop_prompt, permission_prompt, location_prompt, display_workshops
 from typing import Literal
 from pydantic import Field
 from langchain_community.vectorstores import FAISS
@@ -20,7 +20,7 @@ def detect_qtype(state:State, llm):
     return {"relevant": SystemMessage(content=response.content)}
 
 def search_llm(state, llm):
-    response = llm.invoke([SystemMessage(content=MODEL_SYSTEM_MESSAGE)]+state["messages"])
+    response = llm.invoke([SystemMessage(content=MODEL_SYSTEM_MESSAGE + format_prompt)]+state["messages"])
     return {"messages": [AIMessage(content = response.content, additional_kwargs={"complete": True})]}
 
 def find_link(state, llm, embeddings):
@@ -43,7 +43,7 @@ def promotion(state, llm, embeddings):
         if doc.metadata["source"] not in unique_list:
             unique_list.append(doc.metadata["source"])
     formatted_prompt = promotion_prompt.format(question=state["messages"][-1], documents=documents)
-    response = llm.invoke([SystemMessage(content=formatted_prompt)])
+    response = llm.invoke([SystemMessage(content=formatted_prompt+format_prompt)])
     messages = [
         AIMessage(content=link, additional_kwargs={"is_link": True, "complete": True})
         for link in unique_list

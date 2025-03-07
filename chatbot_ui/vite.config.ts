@@ -9,4 +9,28 @@ export default defineConfig({
 
   // 2) Keep your existing plugins
   plugins: [react(), tailwindcss()],
+  build: {
+    lib: {
+      entry: 'src/main.tsx',
+      name: 'Chatbot',
+      fileName: (format) => `chatbot.${format}.js`,
+    },
+    minify: false,
+    rollupOptions: {
+      output: {
+        globals: {
+          // react: 'React',
+          // 'react-dom': 'ReactDOM',
+        },
+      },
+    },
+  },
+  define: {
+    'process.env': {},
+  },
+  resolve: {
+    alias: {
+      process: 'process/browser', // Use process/browser to resolve the process variable
+    },
+  },
 })
